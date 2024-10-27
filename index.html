@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Votación</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+        }
+        th, td {
+            text-align: center;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Registro de Votación</h1>
+        <table class="table table-bordered mt-4">
+            <thead>
+                <tr>
+                    <th>Sector - Mesa</th>
+                    <th>Luis Amestica</th>
+                    <th>Wilson Palma</th>
+                    <th>Juan Muñoz</th>
+                    <th>Juan Carlos Saez</th>
+                    <th>Raúl Martínez</th>
+                    <th>Solayen Cardenaz</th>
+                    <th>Hugo Clavería</th>
+                    <th>Votos Nulos</th>
+                </tr>
+            </thead>
+            <tbody id="votingTableBody">
+                <!-- Filas generadas dinámicamente -->
+            </tbody>
+        </table>
+        <div class="text-center mb-3">
+            <button id="updateChart" class="btn btn-secondary">Actualizar Gráfico</button>
+        </div>
+
+        <h2 class="text-center">Gráfico de Resultados</h2>
+        <canvas id="votingChart" width="400" height="400"></canvas>
+    </div>
+
+    <script>
+        const candidates = ["Luis Amestica", "Wilson Palma", "Juan Muñoz", "Juan Carlos Saez", "Raúl Martínez", "Solayen Cardenaz", "Hugo Clavería", "Votos Nulos"];
+        
+        const tables = [
+            ...Array(16).fill("Claudio Arrau"),
+            ...Array(14).fill("Guillermina"),
+            ...Array(11).fill("Parroquial"),
+            ...Array(8).fill("Cato"),
+            ...Array(6).fill("Estación Pinto"),
+            ...Array(9).fill("Bustamante")
+        ];
+
+        let votingData = JSON.parse(localStorage.getItem('votingData')) || Array(tables.length).fill(null).map(() => Array(candidates.length).fill(0));
+
+        function renderTable() {
+            const tableBody = document.getElementById('votingTableBody');
+            tableBody.innerHTML = '';
+            tables.forEach((table, i) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${table} - Mesa ${i + 1}</td>` + candidates.map((_, j) => 
+                    `<td><input type="number" class="form-control" min="0" value="${votingData[i][j]}" 
+                     onchange="updateVote(${i}, ${j}, this.value)"></td>`
+                ).join('');
+                tableBody.appendChild(row);
+            });
+        }
+
+        function updateVote(tableIndex, candidateIndex, value) {
+            votingData[tableIndex][candidateIndex] = parseInt(value) || 0;
+            localStorage.setItem('votingData', JSON.stringify(votingData));
+        }
+
+        const ctx = document.getElementById('votingChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: candidates,
+                datasets: [{
+                    label: 'Resultados de Votación',
+                    data: Array(candidates.length).fill(0),
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#C0C0C0'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                const totalVotes = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const value = chart.data.datasets[0].data[tooltipItem.dataIndex];
+                                const percentage = ((value / totalVotes) * 100).toFixed(2);
+                                return `${tooltipItem.label}: ${value} votos (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        function updateChart() {
+            const candidateTotals = candidates.map((_, i) => 
+                votingData.reduce((sum, row) => sum + row[i], 0)
+            );
+            chart.data.datasets[0].data = candidateTotals;
+            chart.update();
+        }
+
+        document.getElementById('updateChart').addEventListener('click', updateChart);
+
+        renderTable();
+        updateChart();
+    </script>
+</body>
+</html>
+
